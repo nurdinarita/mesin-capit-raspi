@@ -8,37 +8,40 @@ body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #0d0e15 0%, #1a1c29 100%);
   color: #ffffff;
-  height: 100vh;
+  min-height: 100vh;
   width: 100vw;
-  overflow: hidden;
+  overflow-x: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
   user-select: none;
+  padding: 10px;
 }
 
 .container {
-  width: 95vw;
-  height: 92vh;
+  width: 100%;
+  max-width: 900px;
+  min-height: 90vh;
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(10px);
   border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
-  padding: 25px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
 .header-info {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+  width: 100%;
 }
 
 .header-info h1 {
-  font-size: 2.2rem;
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
   color: #00f2fe;
   text-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
   letter-spacing: 2px;
@@ -51,25 +54,27 @@ body {
   border: 1px solid #ff007f;
   padding: 6px 18px;
   border-radius: 20px;
-  font-size: 1.2rem;
+  font-size: clamp(0.9rem, 2.5vw, 1.2rem);
   font-weight: bold;
   color: #ff007f;
 }
 
+/* Grid Koin - Responsive Grid */
 .grid-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-gap: 20px;
+  gap: 15px;
   width: 100%;
-  max-width: 900px;
-  height: 60%;
+  max-width: 700px;
+  margin-bottom: 15px;
 }
 
 .box-btn {
   background: linear-gradient(145deg, #1e2235, #141724);
   color: #ffffff;
-  font-size: 4rem;
+  font-size: clamp(2.5rem, 6vw, 4rem);
   font-weight: 800;
+  aspect-ratio: 1 / 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -82,20 +87,16 @@ body {
 }
 
 .box-btn span {
-  font-size: 1rem;
+  font-size: clamp(0.7rem, 2vw, 1rem);
   font-weight: 400;
   margin-top: 5px;
   color: #a0a5c0;
 }
 
 .box-btn:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   border-color: #00f2fe;
-  box-shadow: 0 15px 30px rgba(0, 242, 254, 0.3);
-}
-
-.box-btn:active {
-  transform: scale(0.95);
+  box-shadow: 0 10px 25px rgba(0, 242, 254, 0.3);
 }
 
 .box-btn.selected {
@@ -113,11 +114,10 @@ body {
 
 /* Tombol Mulai Main */
 .btn-start {
-  margin-top: 25px;
   width: 100%;
   max-width: 400px;
-  padding: 18px 0;
-  font-size: 1.6rem;
+  padding: 16px 0;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
   font-weight: bold;
   color: #fff;
   background: linear-gradient(145deg, #00e676, #00b359);
@@ -133,10 +133,6 @@ body {
   box-shadow: 0 0 30px rgba(0, 230, 118, 0.7);
 }
 
-.btn-start:active:not(:disabled) {
-  transform: scale(0.96);
-}
-
 .btn-start:disabled {
   background: #2a2e3f;
   color: #666a7a;
@@ -146,64 +142,59 @@ body {
   opacity: 0.6;
 }
 
-/* Screen Kontrol Permainan */
+/* Container Kontrol Game (Joystick + Capit) - Responsive Flex/Grid */
 .game-controls {
   display: flex;
+  flex-direction: row;
   justify-content: space-around;
   align-items: center;
   width: 100%;
-  max-width: 900px;
-  height: 70%;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 20px 0;
 }
 
-.dpad-container {
-  display: grid;
-  grid-template-columns: repeat(3, 90px);
-  grid-template-rows: repeat(3, 90px);
+/* Analog Joystick Component */
+.joystick-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
-.btn-arrow {
-  background: #1e2235;
-  border: 2px solid #3b4262;
-  border-radius: 16px;
-  color: #fff;
-  font-size: 2rem;
+.joystick-base {
+  position: relative;
+  width: clamp(160px, 35vw, 220px);
+  height: clamp(160px, 35vw, 220px);
+  background: radial-gradient(circle, #2a2e45 0%, #141724 100%);
+  border: 4px solid #3d4257;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.8),
+    0 10px 20px rgba(0, 0, 0, 0.4);
   display: flex;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
-  transition: all 0.15s;
+  touch-action: none;
 }
 
-.btn-arrow:hover {
-  background: #2a304a;
-  border-color: #00f2fe;
-}
-.btn-arrow:active {
-  transform: scale(0.9);
-  background: #00f2fe;
-  color: #000;
-}
-
-.btn-up {
-  grid-column: 2;
-  grid-row: 1;
-}
-.btn-left {
-  grid-column: 1;
-  grid-row: 2;
-}
-.btn-right {
-  grid-column: 3;
-  grid-row: 2;
-}
-.btn-down {
-  grid-column: 2;
-  grid-row: 3;
+.joystick-stick {
+  position: absolute;
+  width: clamp(60px, 13vw, 80px);
+  height: clamp(60px, 13vw, 80px);
+  background: radial-gradient(circle at 30% 30%, #00f2fe, #006699);
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 5px 15px rgba(0, 242, 254, 0.6);
+  cursor: grab;
+  transition: transform 0.05s ease-out;
 }
 
+.joystick-stick:active {
+  cursor: grabbing;
+}
+
+/* Tombol Capit */
 .action-container {
   display: flex;
   flex-direction: column;
@@ -211,13 +202,13 @@ body {
 }
 
 .btn-capit {
-  width: 180px;
-  height: 180px;
+  width: clamp(130px, 30vw, 180px);
+  height: clamp(130px, 30vw, 180px);
   border-radius: 50%;
   background: linear-gradient(145deg, #ff007f, #b30059);
   border: 4px solid #ff66b3;
   color: white;
-  font-size: 1.8rem;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
   font-weight: bold;
   cursor: pointer;
   box-shadow:
@@ -240,4 +231,12 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+/* Media Query untuk Layar Sangat Kecil (Mobile Portrait) */
+@media (max-width: 480px) {
+  .game-controls {
+    flex-direction: column;
+    gap: 30px;
+  }
 }

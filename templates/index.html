@@ -46,7 +46,6 @@
           </div>
         </div>
 
-        <!-- Tombol Mulai Main (Selalu tampil, default disabled) -->
         <button
           id="btn-start-game"
           class="btn-start"
@@ -57,15 +56,16 @@
         </button>
       </div>
 
-      <!-- TAMPILAN 2: Menu Kontrol Mesin Capit -->
+      <!-- TAMPILAN 2: Menu Kontrol Mesin Capit dengan Analog Joystick -->
       <div id="screen-game" class="game-controls hidden">
-        <div class="dpad-container">
-          <button class="btn-arrow btn-up">▲</button>
-          <button class="btn-arrow btn-left">◄</button>
-          <button class="btn-arrow btn-right">►</button>
-          <button class="btn-arrow btn-down">▼</button>
+        <!-- Analog Joystick Component -->
+        <div class="joystick-wrapper">
+          <div class="joystick-base" id="joyBase">
+            <div class="joystick-stick" id="joyStick"></div>
+          </div>
         </div>
 
+        <!-- Tombol Capit -->
         <div class="action-container">
           <button class="btn-capit" onclick="grabAction()">CAPIT!</button>
         </div>
@@ -77,8 +77,9 @@
       let selectedCount = 0;
       let remainingCredits = 0;
       let isMyTurn = false;
+      let activeDirection = null;
 
-      // Pengecekan Status Mesin (Polling setiap 2 detik)
+      // Pengecekan Status Mesin (Polling)
       setInterval(checkMachineStatus, 2000);
       checkMachineStatus();
 
@@ -106,10 +107,8 @@
           .catch((err) => console.error(err));
       }
 
-      // Memilih angka & mengaktifkan tombol MULAI MAIN
       function highlightCredit(count, element) {
         selectedCount = count;
-
         document
           .querySelectorAll(".box-btn")
           .forEach((btn) => btn.classList.remove("selected"));
@@ -119,7 +118,6 @@
         startBtn.disabled = false;
       }
 
-      // Konfirmasi & Kunci Mesin
       function confirmAndStart() {
         if (selectedCount === 0) return;
 
@@ -152,7 +150,6 @@
           .catch((err) => console.error(err));
       }
 
-      // Fungsi Tahan/Lepas Navigasi
       function setPinState(direction, state) {
         if (!isMyTurn) return;
 
@@ -164,39 +161,92 @@
             state: state,
             session_id: sessionId,
           }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.status === "error") {
-              alert(data.message);
-              resetGame();
-            }
-          })
-          .catch((err) => console.error(err));
+        }).catch((err) => console.error(err));
       }
 
-      document.querySelectorAll(".btn-arrow").forEach((btn) => {
-        let action = "";
-        if (btn.classList.contains("btn-up")) action = "UP";
-        if (btn.classList.contains("btn-down")) action = "DOWN";
-        if (btn.classList.contains("btn-left")) action = "LEFT";
-        if (btn.classList.contains("btn-right")) action = "RIGHT";
+      /* --- LOGIKA ANALOG JOYSTICK VIRTUAL --- */
+      const joyBase = document.getElementById("joyBase");
+      const joyStick = document.getElementById("joyStick");
+      let isDragging = false;
 
-        btn.addEventListener("mousedown", () => setPinState(action, "ON"));
-        btn.addEventListener("touchstart", (e) => {
-          e.preventDefault();
-          setPinState(action, "ON");
-        });
+      function handleJoystickMove(clientX, clientY) {
+        if (!isDragging || !isMyTurn) return;
 
-        btn.addEventListener("mouseup", () => setPinState(action, "OFF"));
-        btn.addEventListener("mouseleave", () => setPinState(action, "OFF"));
-        btn.addEventListener("touchend", (e) => {
-          e.preventDefault();
-          setPinState(action, "OFF");
-        });
+        const rect = joyBase.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        let deltaX = clientX - centerX;
+        let deltaY = clientY - centerY;
+
+        const maxDistance = rect.width / 2 - 20;
+        const distance = Math.hypot(deltaX, deltaY);
+
+        if (distance > maxDistance) {
+          deltaX = (deltaX / distance) * maxDistance;
+          deltaY = (deltaY / distance) * maxDistance;
+        }
+
+        joyStick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+        // Threshold gerakan minimal
+        if (distance < 25) {
+          if (activeDirection) {
+            setPinState(activeDirection, "OFF");
+            activeDirection = null;
+          }
+          return;
+        }
+
+        // Hitung Sudut Gerakan (Sistem Arah 4 Sisi)
+        const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+        let newDirection = null;
+
+        if (angle >= -45 && angle < 45) newDirection = "RIGHT";
+        else if (angle >= 45 && angle < 135) newDirection = "DOWN";
+        else if (angle >= -135 && angle < -45) newDirection = "UP";
+        else newDirection = "LEFT";
+
+        if (newDirection !== activeDirection) {
+          if (activeDirection) setPinState(activeDirection, "OFF");
+          setPinState(newDirection, "ON");
+          activeDirection = newDirection;
+        }
+      }
+
+      function resetJoystick() {
+        if (!isDragging) return;
+        isDragging = false;
+        joyStick.style.transform = `translate(0px, 0px)`;
+
+        if (activeDirection) {
+          setPinState(activeDirection, "OFF");
+          activeDirection = null;
+        }
+      }
+
+      // Event Listener Mouse
+      joyBase.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        handleJoystickMove(e.clientX, e.clientY);
       });
+      window.addEventListener("mousemove", (e) =>
+        handleJoystickMove(e.clientX, e.clientY),
+      );
+      window.addEventListener("mouseup", resetJoystick);
 
-      // Aksi Capit
+      // Event Listener Touch (Smartphone / Touchscreen)
+      joyBase.addEventListener("touchstart", (e) => {
+        isDragging = true;
+        handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
+      });
+      window.addEventListener("touchmove", (e) => {
+        if (isDragging)
+          handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
+      });
+      window.addEventListener("touchend", resetJoystick);
+
+      /* --- AKSI CAPIT --- */
       function grabAction() {
         if (!isMyTurn) return;
 
