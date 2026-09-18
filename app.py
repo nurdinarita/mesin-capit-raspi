@@ -24,11 +24,11 @@ try:
     # Setup Pin Navigasi
     for pin in GPIO_MAP.values():
         GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.LOW)
+        GPIO.output(pin, GPIO.HIGH)
         
     # Setup Pin Koin/Kredit
     GPIO.setup(COIN_PIN, GPIO.OUT)
-    GPIO.output(COIN_PIN, GPIO.LOW)
+    GPIO.output(COIN_PIN, GPIO.HIGH)
     
     is_raspberry = True
     print("RPi.GPIO Berhasil Diinisialisasi.")
@@ -50,9 +50,9 @@ def control():
         pin = GPIO_MAP[action]
         if is_raspberry:
             if state == 'ON':
-                GPIO.output(pin, GPIO.HIGH)
-            else:
                 GPIO.output(pin, GPIO.LOW)
+            else:
+                GPIO.output(pin, GPIO.HIGH)
         
         print(f"[NAVIGASI] {action} -> {state} (Pin {pin})")
         return jsonify({"status": "success", "action": action, "state": state})
@@ -69,9 +69,9 @@ def trigger_coin():
     
     if is_raspberry:
         for i in range(count):
-            GPIO.output(COIN_PIN, GPIO.HIGH)
-            time.sleep(1)
             GPIO.output(COIN_PIN, GPIO.LOW)
+            time.sleep(1)
+            GPIO.output(COIN_PIN, GPIO.HIGH)
             time.sleep(1)
             
     return jsonify({"status": "success", "pulses": count})
