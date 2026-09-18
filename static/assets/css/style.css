@@ -199,3 +199,35 @@ body {
 .hidden {
   display: none !important;
 }
+/* Tombol Mulai Main */
+.btn-start {
+  margin-top: 25px;
+  width: 100%;
+  max-width: 400px;
+  padding: 18px 0;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(145deg, #00e676, #00b359);
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+  transition: all 0.2s ease;
+}
+
+.btn-start:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 30px rgba(0, 230, 118, 0.7);
+}
+
+.btn-start:active {
+  transform: scale(0.96);
+}
+
+/* Effect saat angka terpilih */
+.box-btn.selected {
+  border-color: #00f2fe !important;
+  background: linear-gradient(145deg, #00f2fe22, #141724) !important;
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.5) !important;
+}

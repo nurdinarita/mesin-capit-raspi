@@ -20,22 +20,42 @@
       </div>
 
       <!-- TAMPILAN 1: Pilihan Angka -->
-      <div id="screen-select" class="grid-container">
-        <div class="box-btn" onclick="selectCredit(1)">
-          1 <span>1x Main</span>
+      <!-- TAMPILAN 1: Pilihan Angka & Tombol Mulai -->
+      <div
+        id="screen-select"
+        style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+        "
+      >
+        <div class="grid-container">
+          <div class="box-btn" onclick="highlightCredit(1, this)">
+            1 <span>1x Main</span>
+          </div>
+          <div class="box-btn" onclick="highlightCredit(2, this)">
+            2 <span>2x Main</span>
+          </div>
+          <div class="box-btn" onclick="highlightCredit(3, this)">
+            3 <span>3x Main</span>
+          </div>
+          <div class="box-btn" onclick="highlightCredit(4, this)">
+            4 <span>4x Main</span>
+          </div>
+          <div class="box-btn" onclick="highlightCredit(5, this)">
+            5 <span>5x Main</span>
+          </div>
         </div>
-        <div class="box-btn" onclick="selectCredit(2)">
-          2 <span>2x Main</span>
-        </div>
-        <div class="box-btn" onclick="selectCredit(3)">
-          3 <span>3x Main</span>
-        </div>
-        <div class="box-btn" onclick="selectCredit(4)">
-          4 <span>4x Main</span>
-        </div>
-        <div class="box-btn" onclick="selectCredit(5)">
-          5 <span>5x Main</span>
-        </div>
+
+        <!-- Tombol Mulai Main -->
+        <button
+          id="btn-start-game"
+          class="btn-start hidden"
+          onclick="confirmAndStart()"
+        >
+          MULAI MAIN
+        </button>
       </div>
 
       <!-- TAMPILAN 2: Menu Kontrol Mesin Capit -->
@@ -60,36 +80,91 @@
     </div>
 
     <script>
+      // Generator ID Sesi Unik untuk Browser ini
+      const sessionId = "session-" + Math.random().toString(36).substring(2, 9);
       let remainingCredits = 0;
+      let isMyTurn = false;
 
-      // Trigger Koin saat Angka 1, 2, 3, 4, 5 diklik
+      // Cek Status Mesin secara Berkala (Polling setiap 2 detik)
+      setInterval(checkMachineStatus, 2000);
+      checkMachineStatus();
+
+      function checkMachineStatus() {
+        if (isMyTurn) return; // Jika sedang main, abaikan pengecekan
+
+        fetch("/check-status")
+          .then((res) => res.json())
+          .then((data) => {
+            const title = document.getElementById("title-text");
+            const selectScreen = document.getElementById("screen-select");
+
+            if (data.is_busy) {
+              title.innerText = "MESIN SEDANG DIGUNAKAN...";
+              title.style.color = "#ff4d4d";
+              selectScreen.style.pointerEvents = "none"; // Matikan klik tombol angka
+              selectScreen.style.opacity = "0.4";
+            } else {
+              title.innerText = "PILIH JUMLAH MAIN";
+              title.style.color = "#00f2fe";
+              selectScreen.style.pointerEvents = "auto"; // Aktifkan kembali klik
+              selectScreen.style.opacity = "1";
+            }
+          })
+          .catch((err) => console.error(err));
+      }
+
       function selectCredit(count) {
-        remainingCredits = count;
-        document.getElementById("credit-count").innerText = remainingCredits;
-
-        // Kirim request pulsa HIGH-LOW jeda 1 detik sebanyak N kali
         fetch("/trigger-coin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ count: count }),
-        });
+          body: JSON.stringify({ count: count, session_id: sessionId }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              isMyTurn = true;
+              remainingCredits = count;
+              document.getElementById("credit-count").innerText =
+                remainingCredits;
 
-        document.getElementById("screen-select").classList.add("hidden");
-        document.getElementById("screen-game").classList.remove("hidden");
-        document.getElementById("credit-badge").classList.remove("hidden");
-        document.getElementById("title-text").innerText = "KONTROL MESIN CAPIT";
+              document.getElementById("screen-select").classList.add("hidden");
+              document.getElementById("screen-game").classList.remove("hidden");
+              document
+                .getElementById("credit-badge")
+                .classList.remove("hidden");
+              document.getElementById("title-text").innerText =
+                "KONTROL MESIN CAPIT";
+              document.getElementById("title-text").style.color = "#00f2fe";
+            } else {
+              alert(data.message);
+              checkMachineStatus();
+            }
+          })
+          .catch((err) => console.error(err));
       }
 
-      // Fungsi Kirim Status Tahan (ON) atau Lepas (OFF)
       function setPinState(direction, state) {
+        if (!isMyTurn) return;
+
         fetch("/control", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: direction, state: state }),
-        }).catch((err) => console.error(err));
+          body: JSON.stringify({
+            action: direction,
+            state: state,
+            session_id: sessionId,
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "error") {
+              alert(data.message);
+              resetGame();
+            }
+          })
+          .catch((err) => console.error(err));
       }
 
-      // Pasang Event Listener Tahan/Lepas pada Tombol Navigasi
       document.querySelectorAll(".btn-arrow").forEach((btn) => {
         let action = "";
         if (btn.classList.contains("btn-up")) action = "UP";
@@ -97,14 +172,12 @@
         if (btn.classList.contains("btn-left")) action = "LEFT";
         if (btn.classList.contains("btn-right")) action = "RIGHT";
 
-        // Tekan (Mouse / Sentuhan) -> HIGH
         btn.addEventListener("mousedown", () => setPinState(action, "ON"));
         btn.addEventListener("touchstart", (e) => {
           e.preventDefault();
           setPinState(action, "ON");
         });
 
-        // Lepas (Mouse / Sentuhan) -> LOW
         btn.addEventListener("mouseup", () => setPinState(action, "OFF"));
         btn.addEventListener("mouseleave", () => setPinState(action, "OFF"));
         btn.addEventListener("touchend", (e) => {
@@ -113,8 +186,9 @@
         });
       });
 
-      // Aksi Tombol Capit (Sekali Klik Beri Pulsa HIGH)
       function grabAction() {
+        if (!isMyTurn) return;
+
         setPinState("GRAB", "ON");
         setTimeout(() => setPinState("GRAB", "OFF"), 500);
 
@@ -130,11 +204,20 @@
       }
 
       function resetGame() {
+        // Lepas sesi di server agar orang lain bisa pakai
+        fetch("/release-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+
+        isMyTurn = false;
         remainingCredits = 0;
         document.getElementById("screen-select").classList.remove("hidden");
         document.getElementById("screen-game").classList.add("hidden");
         document.getElementById("credit-badge").classList.add("hidden");
-        document.getElementById("title-text").innerText = "PILIH JUMLAH MAIN";
+
+        checkMachineStatus();
       }
     </script>
   </body>
