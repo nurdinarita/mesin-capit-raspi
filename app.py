@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# Mapping Aksi ke Nomor Pin BCM GPIO
+# Mapping Aksi Navigasi ke Pin GPIO BCM
 GPIO_MAP = {
     'UP': 17,    
     'DOWN': 27,  
@@ -12,46 +12,72 @@ GPIO_MAP = {
     'GRAB': 6    
 }
 
-# Inisialisasi GPIO (Safety check untuk PC Windows / Raspberry Pi)
+# Pin Khusus untuk Indikator Koin/Kredit (Ganti nomor BCM sesuai kebutuhan)
+COIN_PIN = 26 
+
 is_raspberry = False
 try:
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
+    
+    # Setup Pin Navigasi
     for pin in GPIO_MAP.values():
         GPIO.setup(pin, GPIO.OUT)
         GPIO.output(pin, GPIO.LOW)
+        
+    # Setup Pin Koin/Kredit
+    GPIO.setup(COIN_PIN, GPIO.OUT)
+    GPIO.output(COIN_PIN, GPIO.LOW)
+    
     is_raspberry = True
     print("RPi.GPIO Berhasil Diinisialisasi.")
 except ImportError:
-    print("[PC Simulation Mode] Modul RPi.GPIO tidak ditemukan. Menjalankan mode simulasi.")
+    print("[PC Simulation Mode] Modul RPi.GPIO tidak ditemukan.")
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# Endpoint untuk Kontrol Tahan/Lepas (Hold/Release Navigasi)
 @app.route('/control', methods=['POST'])
 def control():
     data = request.get_json()
     action = data.get('action')
-    print(f"[Aksi Diterima]: {action}")
-
+    state = data.get('state')  # 'ON' atau 'OFF'
+    
     if action in GPIO_MAP:
         pin = GPIO_MAP[action]
-        
         if is_raspberry:
-            # Beri pulsa ke GPIO selama 0.3 detik
-            GPIO.output(pin, GPIO.HIGH)
-            time.sleep(0.3)
-            GPIO.output(pin, GPIO.LOW)
-
-        return jsonify({"status": "success", "action": action, "pin": pin})
+            if state == 'ON':
+                GPIO.output(pin, GPIO.HIGH)
+            else:
+                GPIO.output(pin, GPIO.LOW)
+        
+        print(f"[NAVIGASI] {action} -> {state} (Pin {pin})")
+        return jsonify({"status": "success", "action": action, "state": state})
 
     return jsonify({"status": "error", "message": "Aksi tidak valid"}), 400
 
+# Endpoint untuk Trigger Angka Koin (HIGH-LOW Jeda 1 Detik Berulang)
+@app.route('/trigger-coin', methods=['POST'])
+def trigger_coin():
+    data = request.get_json()
+    count = int(data.get('count', 1))
+    
+    print(f"[KOIN] Menerima {count}x pulsa koin...")
+    
+    if is_raspberry:
+        for i in range(count):
+            GPIO.output(COIN_PIN, GPIO.HIGH)
+            time.sleep(1)
+            GPIO.output(COIN_PIN, GPIO.LOW)
+            time.sleep(1)
+            
+    return jsonify({"status": "success", "pulses": count})
+
 if __name__ == '__main__':
     try:
-        # Jalankan server Flask pada port 5000
         app.run(host='0.0.0.0', port=5000, debug=False)
     finally:
         if is_raspberry:

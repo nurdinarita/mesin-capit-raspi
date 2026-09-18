@@ -62,9 +62,17 @@
     <script>
       let remainingCredits = 0;
 
+      // Trigger Koin saat Angka 1, 2, 3, 4, 5 diklik
       function selectCredit(count) {
         remainingCredits = count;
         document.getElementById("credit-count").innerText = remainingCredits;
+
+        // Kirim request pulsa HIGH-LOW jeda 1 detik sebanyak N kali
+        fetch("/trigger-coin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ count: count }),
+        });
 
         document.getElementById("screen-select").classList.add("hidden");
         document.getElementById("screen-game").classList.remove("hidden");
@@ -72,26 +80,52 @@
         document.getElementById("title-text").innerText = "KONTROL MESIN CAPIT";
       }
 
-      function sendAction(direction) {
+      // Fungsi Kirim Status Tahan (ON) atau Lepas (OFF)
+      function setPinState(direction, state) {
         fetch("/control", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: direction }),
-        })
-          .then((res) => res.json())
-          .then((data) => console.log("Gerakan GPIO:", data))
-          .catch((err) => console.error(err));
+          body: JSON.stringify({ action: direction, state: state }),
+        }).catch((err) => console.error(err));
       }
 
+      // Pasang Event Listener Tahan/Lepas pada Tombol Navigasi
+      document.querySelectorAll(".btn-arrow").forEach((btn) => {
+        let action = "";
+        if (btn.classList.contains("btn-up")) action = "UP";
+        if (btn.classList.contains("btn-down")) action = "DOWN";
+        if (btn.classList.contains("btn-left")) action = "LEFT";
+        if (btn.classList.contains("btn-right")) action = "RIGHT";
+
+        // Tekan (Mouse / Sentuhan) -> HIGH
+        btn.addEventListener("mousedown", () => setPinState(action, "ON"));
+        btn.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          setPinState(action, "ON");
+        });
+
+        // Lepas (Mouse / Sentuhan) -> LOW
+        btn.addEventListener("mouseup", () => setPinState(action, "OFF"));
+        btn.addEventListener("mouseleave", () => setPinState(action, "OFF"));
+        btn.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          setPinState(action, "OFF");
+        });
+      });
+
+      // Aksi Tombol Capit (Sekali Klik Beri Pulsa HIGH)
       function grabAction() {
-        sendAction("GRAB");
+        setPinState("GRAB", "ON");
+        setTimeout(() => setPinState("GRAB", "OFF"), 500);
 
         remainingCredits--;
         document.getElementById("credit-count").innerText = remainingCredits;
 
         if (remainingCredits <= 0) {
-          alert("Game Selesai! Kesempatan main telah habis.");
-          resetGame();
+          setTimeout(() => {
+            alert("Game Selesai! Kesempatan main telah habis.");
+            resetGame();
+          }, 600);
         }
       }
 
