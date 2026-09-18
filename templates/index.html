@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mesin Capit Raspberry Pi</title>
-    <!-- Menghubungkan CSS statis Flask -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='assets/css/style.css') }}"
@@ -19,7 +18,6 @@
         </div>
       </div>
 
-      <!-- TAMPILAN 1: Pilihan Angka -->
       <!-- TAMPILAN 1: Pilihan Angka & Tombol Mulai -->
       <div
         id="screen-select"
@@ -48,11 +46,12 @@
           </div>
         </div>
 
-        <!-- Tombol Mulai Main -->
+        <!-- Tombol Mulai Main (Selalu tampil, default disabled) -->
         <button
           id="btn-start-game"
-          class="btn-start hidden"
+          class="btn-start"
           onclick="confirmAndStart()"
+          disabled
         >
           MULAI MAIN
         </button>
@@ -61,16 +60,10 @@
       <!-- TAMPILAN 2: Menu Kontrol Mesin Capit -->
       <div id="screen-game" class="game-controls hidden">
         <div class="dpad-container">
-          <button class="btn-arrow btn-up" onclick="sendAction('UP')">▲</button>
-          <button class="btn-arrow btn-left" onclick="sendAction('LEFT')">
-            ◄
-          </button>
-          <button class="btn-arrow btn-right" onclick="sendAction('RIGHT')">
-            ►
-          </button>
-          <button class="btn-arrow btn-down" onclick="sendAction('DOWN')">
-            ▼
-          </button>
+          <button class="btn-arrow btn-up">▲</button>
+          <button class="btn-arrow btn-left">◄</button>
+          <button class="btn-arrow btn-right">►</button>
+          <button class="btn-arrow btn-down">▼</button>
         </div>
 
         <div class="action-container">
@@ -80,17 +73,17 @@
     </div>
 
     <script>
-      // Generator ID Sesi Unik untuk Browser ini
       const sessionId = "session-" + Math.random().toString(36).substring(2, 9);
+      let selectedCount = 0;
       let remainingCredits = 0;
       let isMyTurn = false;
 
-      // Cek Status Mesin secara Berkala (Polling setiap 2 detik)
+      // Pengecekan Status Mesin (Polling setiap 2 detik)
       setInterval(checkMachineStatus, 2000);
       checkMachineStatus();
 
       function checkMachineStatus() {
-        if (isMyTurn) return; // Jika sedang main, abaikan pengecekan
+        if (isMyTurn) return;
 
         fetch("/check-status")
           .then((res) => res.json())
@@ -101,29 +94,45 @@
             if (data.is_busy) {
               title.innerText = "MESIN SEDANG DIGUNAKAN...";
               title.style.color = "#ff4d4d";
-              selectScreen.style.pointerEvents = "none"; // Matikan klik tombol angka
+              selectScreen.style.pointerEvents = "none";
               selectScreen.style.opacity = "0.4";
             } else {
               title.innerText = "PILIH JUMLAH MAIN";
               title.style.color = "#00f2fe";
-              selectScreen.style.pointerEvents = "auto"; // Aktifkan kembali klik
+              selectScreen.style.pointerEvents = "auto";
               selectScreen.style.opacity = "1";
             }
           })
           .catch((err) => console.error(err));
       }
 
-      function selectCredit(count) {
+      // Memilih angka & mengaktifkan tombol MULAI MAIN
+      function highlightCredit(count, element) {
+        selectedCount = count;
+
+        document
+          .querySelectorAll(".box-btn")
+          .forEach((btn) => btn.classList.remove("selected"));
+        element.classList.add("selected");
+
+        const startBtn = document.getElementById("btn-start-game");
+        startBtn.disabled = false;
+      }
+
+      // Konfirmasi & Kunci Mesin
+      function confirmAndStart() {
+        if (selectedCount === 0) return;
+
         fetch("/trigger-coin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ count: count, session_id: sessionId }),
+          body: JSON.stringify({ count: selectedCount, session_id: sessionId }),
         })
           .then((res) => res.json())
           .then((data) => {
             if (data.status === "success") {
               isMyTurn = true;
-              remainingCredits = count;
+              remainingCredits = selectedCount;
               document.getElementById("credit-count").innerText =
                 remainingCredits;
 
@@ -143,6 +152,7 @@
           .catch((err) => console.error(err));
       }
 
+      // Fungsi Tahan/Lepas Navigasi
       function setPinState(direction, state) {
         if (!isMyTurn) return;
 
@@ -186,6 +196,7 @@
         });
       });
 
+      // Aksi Capit
       function grabAction() {
         if (!isMyTurn) return;
 
@@ -204,7 +215,6 @@
       }
 
       function resetGame() {
-        // Lepas sesi di server agar orang lain bisa pakai
         fetch("/release-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -212,7 +222,16 @@
         });
 
         isMyTurn = false;
+        selectedCount = 0;
         remainingCredits = 0;
+
+        document
+          .querySelectorAll(".box-btn")
+          .forEach((btn) => btn.classList.remove("selected"));
+
+        const startBtn = document.getElementById("btn-start-game");
+        startBtn.disabled = true;
+
         document.getElementById("screen-select").classList.remove("hidden");
         document.getElementById("screen-game").classList.add("hidden");
         document.getElementById("credit-badge").classList.add("hidden");

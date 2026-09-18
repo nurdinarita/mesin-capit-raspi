@@ -1,10 +1,9 @@
 import time
-import uuid
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# Status Sesi Mesin Capit
+# Status Sesi Mesin Capit (Global Lock)
 is_busy = False
 active_session_id = None
 
@@ -17,6 +16,7 @@ GPIO_MAP = {
     'GRAB': 6    
 }
 
+# Pin Khusus untuk Indikator Koin/Kredit
 COIN_PIN = 26 
 
 is_raspberry = False
@@ -25,17 +25,19 @@ try:
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     
+    # Setup Pin Navigasi
     for pin in GPIO_MAP.values():
         GPIO.setup(pin, GPIO.OUT)
         GPIO.output(pin, GPIO.LOW)
         
+    # Setup Pin Koin/Kredit
     GPIO.setup(COIN_PIN, GPIO.OUT)
     GPIO.output(COIN_PIN, GPIO.LOW)
     
     is_raspberry = True
     print("RPi.GPIO Berhasil Diinisialisasi.")
 except ImportError:
-    print("[PC Simulation Mode] Modul RPi.GPIO tidak ditemukan.")
+    print("[PC Simulation Mode] Modul RPi.GPIO tidak ditemukan. Menjalankan mode simulasi.")
 
 @app.route('/')
 def index():
@@ -47,7 +49,7 @@ def check_status():
     global is_busy
     return jsonify({"is_busy": is_busy})
 
-# Endpoint untuk Mulai Main (Kunci Mesin)
+# Endpoint untuk Mulai Main (Kunci Mesin & Kirim Sinyal Koin)
 @app.route('/trigger-coin', methods=['POST'])
 def trigger_coin():
     global is_busy, active_session_id
@@ -75,14 +77,14 @@ def trigger_coin():
             
     return jsonify({"status": "success", "pulses": count})
 
-# Endpoint Navigasi dengan Validasi Sesi
+# Endpoint Navigasi (Hold/Release) dengan Validasi Sesi
 @app.route('/control', methods=['POST'])
 def control():
     global is_busy, active_session_id
     
     data = request.get_json()
     action = data.get('action')
-    state = data.get('state')
+    state = data.get('state')  # 'ON' atau 'OFF'
     session_id = data.get('session_id')
     
     # Validasi: Tolak perintah jika sesi tidak cocok
