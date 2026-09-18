@@ -75,7 +75,7 @@ def trigger_coin():
             
     return jsonify({"status": "success", "pulses": count})
 
-# Endpoint Navigasi (Support Multi-Direction / Diagonal - Active LOW)
+# Endpoint Navigasi (Mendukung Multi-Direction / Diagonal - Active LOW)
 @app.route('/control', methods=['POST'])
 def control():
     global is_busy, active_session_id
@@ -89,19 +89,19 @@ def control():
         return jsonify({"status": "error", "message": "Akses ditolak. Mesin sedang digunakan pemain lain!"}), 403
 
     if is_raspberry:
-        if state == 'OFF':
-            # Kembalikan semua pin ke IDLE (HIGH)
+        if state == 'OFF' or not actions:
+            # Mati semua -> Set ke HIGH (Idle)
             for pin in GPIO_MAP.values():
                 GPIO.output(pin, GPIO.HIGH)
         else:
-            # Set pin yang terpilih jadi AKTIF (LOW), pin lain IDLE (HIGH)
+            # Set pin yang ada di list 'actions' jadi LOW (Aktif), sisanya HIGH (Idle)
             for act, pin in GPIO_MAP.items():
                 if act in actions:
-                    GPIO.output(pin, GPIO.LOW)   # Aktif (LOW)
+                    GPIO.output(pin, GPIO.LOW)   # Aktif
                 else:
-                    GPIO.output(pin, GPIO.HIGH)  # Idle (HIGH)
+                    GPIO.output(pin, GPIO.HIGH)  # Idle
     
-    print(f"[NAVIGASI] Aksi: {actions} -> State: {state}")
+    print(f"[NAVIGASI DIAGONAL] Aksi Terdeteksi: {actions} -> State: {state}")
     return jsonify({"status": "success", "actions": actions, "state": state})
 
 # Endpoint untuk Melepas Kunci Sesi

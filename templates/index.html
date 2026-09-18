@@ -146,7 +146,7 @@
           .catch((err) => console.error(err));
       }
 
-      /* --- LOGIKA ANALOG JOYSTICK VIRTUAL 8 ARAH (DIAGONAL) --- */
+      /* --- LOGIKA ANALOG JOYSTICK VIRTUAL 8 ARAH (DIAGONAL PERBAIKAN) --- */
       const joyBase = document.getElementById("joyBase");
       const joyStick = document.getElementById("joyStick");
       let isDragging = false;
@@ -186,7 +186,8 @@
 
         joyStick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-        if (distance < 25) {
+        // Deadzone Tengah
+        if (distance < 20) {
           if (activeDirections.length > 0) {
             setPinState([], "OFF");
             activeDirections = [];
@@ -194,25 +195,27 @@
           return;
         }
 
-        const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+        // Hitung Sudut Derajat (-180 sampai 180)
+        let angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
         let newDirections = [];
 
+        // Pembagian 8 Sektor Arah
         if (angle >= -22.5 && angle < 22.5) {
           newDirections = ["RIGHT"];
         } else if (angle >= 22.5 && angle < 67.5) {
-          newDirections = ["DOWN", "RIGHT"];
+          newDirections = ["DOWN", "RIGHT"]; // Bawah - Kanan
         } else if (angle >= 67.5 && angle < 112.5) {
           newDirections = ["DOWN"];
         } else if (angle >= 112.5 && angle < 157.5) {
-          newDirections = ["DOWN", "LEFT"];
-        } else if (angle >= -67.5 && angle < -22.5) {
-          newDirections = ["UP", "RIGHT"];
+          newDirections = ["DOWN", "LEFT"]; // Bawah - Kiri
+        } else if (angle >= 157.5 || angle < -157.5) {
+          newDirections = ["LEFT"];
+        } else if (angle >= -157.5 && angle < -112.5) {
+          newDirections = ["UP", "LEFT"]; // Atas - Kiri
         } else if (angle >= -112.5 && angle < -67.5) {
           newDirections = ["UP"];
-        } else if (angle >= -157.5 && angle < -112.5) {
-          newDirections = ["UP", "LEFT"];
-        } else {
-          newDirections = ["LEFT"];
+        } else if (angle >= -67.5 && angle < -22.5) {
+          newDirections = ["UP", "RIGHT"]; // Atas - Kanan
         }
 
         if (
