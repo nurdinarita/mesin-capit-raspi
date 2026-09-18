@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mesin Capit Raspberry Pi</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header status -->
+      <div class="header-info">
+        <h1 id="title-text">PILIH JUMLAH MAIN</h1>
+        <div id="credit-badge" class="credits-badge hidden">
+          Sisa Main: <span id="credit-count">0</span>x
+        </div>
+      </div>
+
+      <!-- TAMPILAN 1: Pilihan Angka (Kredit/Jumlah Main) -->
+      <div id="screen-select" class="grid-container">
+        <div class="box-btn" onclick="selectCredit(1)">
+          1 <span>1x Main</span>
+        </div>
+        <div class="box-btn" onclick="selectCredit(2)">
+          2 <span>2x Main</span>
+        </div>
+        <div class="box-btn" onclick="selectCredit(3)">
+          3 <span>3x Main</span>
+        </div>
+        <div class="box-btn" onclick="selectCredit(4)">
+          4 <span>4x Main</span>
+        </div>
+        <div class="box-btn" onclick="selectCredit(5)">
+          5 <span>5x Main</span>
+        </div>
+      </div>
+
+      <!-- TAMPILAN 2: Menu Kontrol Mesin Capit -->
+      <div id="screen-game" class="game-controls hidden">
+        <!-- D-Pad (Navigasi) -->
+        <div class="dpad-container">
+          <button class="btn-arrow btn-up" onclick="sendAction('UP')">▲</button>
+          <button class="btn-arrow btn-left" onclick="sendAction('LEFT')">
+            ◄
+          </button>
+          <button class="btn-arrow btn-right" onclick="sendAction('RIGHT')">
+            ►
+          </button>
+          <button class="btn-arrow btn-down" onclick="sendAction('DOWN')">
+            ▼
+          </button>
+        </div>
+
+        <!-- Tombol Capit -->
+        <div class="action-container">
+          <button class="btn-capit" onclick="grabAction()">CAPIT!</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let remainingCredits = 0;
+
+      function selectCredit(count) {
+        remainingCredits = count;
+        document.getElementById("credit-count").innerText = remainingCredits;
+
+        // Pindah tampilan dari pilih angka ke kontrol main
+        document.getElementById("screen-select").classList.add("hidden");
+        document.getElementById("screen-game").classList.remove("hidden");
+        document.getElementById("credit-badge").classList.remove("hidden");
+        document.getElementById("title-text").innerText = "KONTROL MESIN CAPIT";
+      }
+
+      function sendAction(direction) {
+        fetch("/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: direction }),
+        })
+          .then((res) => res.json())
+          .then((data) => console.log("Gerakan GPIO:", data))
+          .catch((err) => console.error(err));
+      }
+
+      function grabAction() {
+        // Jalankan aksinya ke server
+        sendAction("GRAB");
+
+        // Kurangi sisa kredit
+        remainingCredits--;
+        document.getElementById("credit-count").innerText = remainingCredits;
+
+        // Jika kesempatan main sudah habis (End Game)
+        if (remainingCredits <= 0) {
+          alert("Game Selesai! Kesempatan main telah habis.");
+          resetGame();
+        }
+      }
+
+      function resetGame() {
+        remainingCredits = 0;
+        document.getElementById("screen-select").classList.remove("hidden");
+        document.getElementById("screen-game").classList.add("hidden");
+        document.getElementById("credit-badge").classList.add("hidden");
+        document.getElementById("title-text").innerText = "PILIH JUMLAH MAIN";
+      }
+    </script>
+  </body>
+</html>
