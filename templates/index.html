@@ -58,14 +58,12 @@
 
       <!-- TAMPILAN 2: Menu Kontrol Mesin Capit dengan Analog Joystick -->
       <div id="screen-game" class="game-controls hidden">
-        <!-- Analog Joystick Component -->
         <div class="joystick-wrapper">
           <div class="joystick-base" id="joyBase">
             <div class="joystick-stick" id="joyStick"></div>
           </div>
         </div>
 
-        <!-- Tombol Capit -->
         <div class="action-container">
           <button class="btn-capit" onclick="grabAction()">CAPIT!</button>
         </div>
@@ -77,9 +75,7 @@
       let selectedCount = 0;
       let remainingCredits = 0;
       let isMyTurn = false;
-      let activeDirection = null;
 
-      // Pengecekan Status Mesin (Polling)
       setInterval(checkMachineStatus, 2000);
       checkMachineStatus();
 
@@ -150,24 +146,25 @@
           .catch((err) => console.error(err));
       }
 
-      function setPinState(direction, state) {
+      /* --- LOGIKA ANALOG JOYSTICK VIRTUAL 8 ARAH (DIAGONAL) --- */
+      const joyBase = document.getElementById("joyBase");
+      const joyStick = document.getElementById("joyStick");
+      let isDragging = false;
+      let activeDirections = [];
+
+      function setPinState(directions, state) {
         if (!isMyTurn) return;
 
         fetch("/control", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: direction,
+            actions: directions,
             state: state,
             session_id: sessionId,
           }),
         }).catch((err) => console.error(err));
       }
-
-      /* --- LOGIKA ANALOG JOYSTICK VIRTUAL --- */
-      const joyBase = document.getElementById("joyBase");
-      const joyStick = document.getElementById("joyStick");
-      let isDragging = false;
 
       function handleJoystickMove(clientX, clientY) {
         if (!isDragging || !isMyTurn) return;
@@ -189,28 +186,40 @@
 
         joyStick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-        // Threshold gerakan minimal
         if (distance < 25) {
-          if (activeDirection) {
-            setPinState(activeDirection, "OFF");
-            activeDirection = null;
+          if (activeDirections.length > 0) {
+            setPinState([], "OFF");
+            activeDirections = [];
           }
           return;
         }
 
-        // Hitung Sudut Gerakan (Sistem Arah 4 Sisi)
         const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
-        let newDirection = null;
+        let newDirections = [];
 
-        if (angle >= -45 && angle < 45) newDirection = "RIGHT";
-        else if (angle >= 45 && angle < 135) newDirection = "DOWN";
-        else if (angle >= -135 && angle < -45) newDirection = "UP";
-        else newDirection = "LEFT";
+        if (angle >= -22.5 && angle < 22.5) {
+          newDirections = ["RIGHT"];
+        } else if (angle >= 22.5 && angle < 67.5) {
+          newDirections = ["DOWN", "RIGHT"];
+        } else if (angle >= 67.5 && angle < 112.5) {
+          newDirections = ["DOWN"];
+        } else if (angle >= 112.5 && angle < 157.5) {
+          newDirections = ["DOWN", "LEFT"];
+        } else if (angle >= -67.5 && angle < -22.5) {
+          newDirections = ["UP", "RIGHT"];
+        } else if (angle >= -112.5 && angle < -67.5) {
+          newDirections = ["UP"];
+        } else if (angle >= -157.5 && angle < -112.5) {
+          newDirections = ["UP", "LEFT"];
+        } else {
+          newDirections = ["LEFT"];
+        }
 
-        if (newDirection !== activeDirection) {
-          if (activeDirection) setPinState(activeDirection, "OFF");
-          setPinState(newDirection, "ON");
-          activeDirection = newDirection;
+        if (
+          JSON.stringify(newDirections) !== JSON.stringify(activeDirections)
+        ) {
+          activeDirections = newDirections;
+          setPinState(activeDirections, "ON");
         }
       }
 
@@ -219,13 +228,12 @@
         isDragging = false;
         joyStick.style.transform = `translate(0px, 0px)`;
 
-        if (activeDirection) {
-          setPinState(activeDirection, "OFF");
-          activeDirection = null;
+        if (activeDirections.length > 0) {
+          setPinState([], "OFF");
+          activeDirections = [];
         }
       }
 
-      // Event Listener Mouse
       joyBase.addEventListener("mousedown", (e) => {
         isDragging = true;
         handleJoystickMove(e.clientX, e.clientY);
@@ -235,7 +243,6 @@
       );
       window.addEventListener("mouseup", resetJoystick);
 
-      // Event Listener Touch (Smartphone / Touchscreen)
       joyBase.addEventListener("touchstart", (e) => {
         isDragging = true;
         handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
@@ -250,8 +257,8 @@
       function grabAction() {
         if (!isMyTurn) return;
 
-        setPinState("GRAB", "ON");
-        setTimeout(() => setPinState("GRAB", "OFF"), 500);
+        setPinState(["GRAB"], "ON");
+        setTimeout(() => setPinState(["GRAB"], "OFF"), 500);
 
         remainingCredits--;
         document.getElementById("credit-count").innerText = remainingCredits;

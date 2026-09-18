@@ -59,7 +59,6 @@ body {
   color: #ff007f;
 }
 
-/* Grid Koin - Responsive Grid */
 .grid-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -112,7 +111,6 @@ body {
   grid-column: 2 / 3;
 }
 
-/* Tombol Mulai Main */
 .btn-start {
   width: 100%;
   max-width: 400px;
@@ -142,7 +140,6 @@ body {
   opacity: 0.6;
 }
 
-/* Container Kontrol Game (Joystick + Capit) - Responsive Flex/Grid */
 .game-controls {
   display: flex;
   flex-direction: row;
@@ -154,7 +151,6 @@ body {
   padding: 20px 0;
 }
 
-/* Analog Joystick Component */
 .joystick-wrapper {
   display: flex;
   flex-direction: column;
@@ -194,7 +190,6 @@ body {
   cursor: grabbing;
 }
 
-/* Tombol Capit */
 .action-container {
   display: flex;
   flex-direction: column;
@@ -233,7 +228,6 @@ body {
   display: none !important;
 }
 
-/* Media Query untuk Layar Sangat Kecil (Mobile Portrait) */
 @media (max-width: 480px) {
   .game-controls {
     flex-direction: column;

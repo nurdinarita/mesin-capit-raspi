@@ -25,17 +25,17 @@ try:
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     
-    # Setup Pin Navigasi
+    # Setup Pin Navigasi (Default IDLE = HIGH / Active LOW)
     for pin in GPIO_MAP.values():
         GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.LOW)
+        GPIO.output(pin, GPIO.HIGH)
         
-    # Setup Pin Koin/Kredit
+    # Setup Pin Koin/Kredit (Default IDLE = HIGH / Active LOW)
     GPIO.setup(COIN_PIN, GPIO.OUT)
-    GPIO.output(COIN_PIN, GPIO.LOW)
+    GPIO.output(COIN_PIN, GPIO.HIGH)
     
     is_raspberry = True
-    print("RPi.GPIO Berhasil Diinisialisasi.")
+    print("RPi.GPIO Berhasil Diinisialisasi (Active LOW Mode).")
 except ImportError:
     print("[PC Simulation Mode] Modul RPi.GPIO tidak ditemukan. Menjalankan mode simulasi.")
 
@@ -43,13 +43,13 @@ except ImportError:
 def index():
     return render_template('index.html')
 
-# Endpoint pengecekan status mesin saat pertama buka halaman web
+# Endpoint pengecekan status mesin
 @app.route('/check-status', methods=['GET'])
 def check_status():
     global is_busy
     return jsonify({"is_busy": is_busy})
 
-# Endpoint untuk Mulai Main (Kunci Mesin & Kirim Sinyal Koin)
+# Endpoint untuk Mulai Main (Kunci Mesin & Kirim Sinyal Koin Active LOW)
 @app.route('/trigger-coin', methods=['POST'])
 def trigger_coin():
     global is_busy, active_session_id
@@ -58,11 +58,9 @@ def trigger_coin():
     session_id = data.get('session_id')
     count = int(data.get('count', 1))
     
-    # Validasi: Jika sedang dimainkan oleh sesi lain
     if is_busy and active_session_id != session_id:
         return jsonify({"status": "error", "message": "Mesin sedang digunakan oleh pemain lain!"}), 403
     
-    # Kunci mesin untuk sesi ini
     is_busy = True
     active_session_id = session_id
     
@@ -70,41 +68,43 @@ def trigger_coin():
     
     if is_raspberry:
         for i in range(count):
-            GPIO.output(COIN_PIN, GPIO.HIGH)
+            GPIO.output(COIN_PIN, GPIO.LOW)   # Aktif (LOW)
             time.sleep(1)
-            GPIO.output(COIN_PIN, GPIO.LOW)
+            GPIO.output(COIN_PIN, GPIO.HIGH)  # Idle (HIGH)
             time.sleep(1)
             
     return jsonify({"status": "success", "pulses": count})
 
-# Endpoint Navigasi (Hold/Release) dengan Validasi Sesi
+# Endpoint Navigasi (Support Multi-Direction / Diagonal - Active LOW)
 @app.route('/control', methods=['POST'])
 def control():
     global is_busy, active_session_id
     
     data = request.get_json()
-    action = data.get('action')
-    state = data.get('state')  # 'ON' atau 'OFF'
+    actions = data.get('actions', [])  # Menerima list aksi, misal: ['UP', 'RIGHT']
+    state = data.get('state')          # 'ON' atau 'OFF'
     session_id = data.get('session_id')
     
-    # Validasi: Tolak perintah jika sesi tidak cocok
     if active_session_id != session_id:
         return jsonify({"status": "error", "message": "Akses ditolak. Mesin sedang digunakan pemain lain!"}), 403
 
-    if action in GPIO_MAP:
-        pin = GPIO_MAP[action]
-        if is_raspberry:
-            if state == 'ON':
+    if is_raspberry:
+        if state == 'OFF':
+            # Kembalikan semua pin ke IDLE (HIGH)
+            for pin in GPIO_MAP.values():
                 GPIO.output(pin, GPIO.HIGH)
-            else:
-                GPIO.output(pin, GPIO.LOW)
-        
-        print(f"[NAVIGASI] {action} -> {state} (Pin {pin})")
-        return jsonify({"status": "success", "action": action, "state": state})
+        else:
+            # Set pin yang terpilih jadi AKTIF (LOW), pin lain IDLE (HIGH)
+            for act, pin in GPIO_MAP.items():
+                if act in actions:
+                    GPIO.output(pin, GPIO.LOW)   # Aktif (LOW)
+                else:
+                    GPIO.output(pin, GPIO.HIGH)  # Idle (HIGH)
+    
+    print(f"[NAVIGASI] Aksi: {actions} -> State: {state}")
+    return jsonify({"status": "success", "actions": actions, "state": state})
 
-    return jsonify({"status": "error", "message": "Aksi tidak valid"}), 400
-
-# Endpoint untuk Melepas Kunci (Game Over / Reset)
+# Endpoint untuk Melepas Kunci Sesi
 @app.route('/release-session', methods=['POST'])
 def release_session():
     global is_busy, active_session_id
